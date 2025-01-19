@@ -1,6 +1,6 @@
 {
   "name": "alien-deepsignals",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "private": false,
   "author": "CCherry07",
   "license": "MIT",
@@ -17,6 +17,9 @@
       "require": "./dist/alien-deepsignals.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "description": "AlienDeepSignals 🧶 -alien signals, but using regular JavaScript objects",
   "scripts": {
     "prebuild": "rimraf dist",
