@@ -1,36 +1,79 @@
 {
   "name": "alien-deepsignals",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "private": false,
   "author": "CCherry07",
   "license": "MIT",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "main": "dist/alien-deepsignals.js",
+  "module": "dist/alien-deepsignals.module.js",
+  "unpkg": "dist/alien-deepsignals.min.js",
+  "types": "dist/alien-deepsignals.d.ts",
+  "source": "src/index.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "types": "./dist/alien-deepsignals.d.ts",
+      "browser": "./dist/alien-deepsignals.module.js",
+      "import": "./dist/alien-deepsignals.mjs",
+      "require": "./dist/alien-deepsignals.js"
     }
   },
   "description": "AlienDeepSignals 🧶 -alien signals, but using regular JavaScript objects",
   "scripts": {
+    "prebuild": "rimraf dist",
+    "build": "microbundle",
     "test": "vitest",
     "dev": "tsup --watch src",
-    "build": "tsup",
-    "release": "bumpp && npm run build && npm publish --registry=https://registry.npmjs.org/"
+    "ci:build": "pnpm build",
+    "release": "bumpp && pnpm prebuild && pnpm build && npm publish --registry=https://registry.npmjs.org/"
   },
   "dependencies": {
     "alien-signals": "^1.0.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/plugin-transform-typescript": "^7.19.1",
+    "@babel/preset-env": "^7.19.1",
+    "@babel/preset-react": "^7.18.6",
+    "@babel/preset-typescript": "^7.18.6",
+    "@changesets/changelog-github": "^0.4.8",
+    "@changesets/cli": "^2.26.2",
+    "@types/chai": "^4.3.3",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "^18.6.5",
+    "@types/sinon": "^10.0.13",
+    "@types/sinon-chai": "^3.2.8",
+    "@typescript-eslint/eslint-plugin": "^5.33.0",
+    "@typescript-eslint/parser": "^5.33.0",
+    "@vitest/coverage-istanbul": "3.0.2",
+    "babel-plugin-istanbul": "^6.1.1",
+    "babel-plugin-transform-rename-properties": "^0.1.0",
     "bumpp": "^9.9.2",
+    "chai": "^4.3.6",
+    "cross-env": "^7.0.3",
+    "errorstacks": "^2.4.1",
+    "esbuild": "0.14.54",
+    "eslint": "^8.21.0",
+    "eslint-config-prettier": "^8.5.0",
+    "husky": "^8.0.1",
+    "karma": "^6.4.4",
+    "karma-chai-sinon": "^0.1.5",
+    "karma-chrome-launcher": "^3.1.1",
+    "karma-coverage": "^2.2.0",
+    "karma-esbuild": "^2.2.5",
+    "karma-mocha": "^2.0.1",
+    "karma-mocha-reporter": "^2.2.5",
+    "karma-sinon": "^1.0.5",
+    "kolorist": "^1.8.0",
+    "lint-staged": "^13.0.3",
+    "microbundle": "^0.15.1",
+    "mocha": "^10.0.0",
+    "prettier": "^2.8.8",
+    "rimraf": "^3.0.2",
+    "sinon": "^14.0.0",
+    "sinon-chai": "^3.7.0",
     "tsup": "^8.3.5",
-    "typescript": "^5.4.3",
-    "vitest": "^2.1.8"
+    "typescript": "^4.7.4",
+    "vitest": "^3.0.2"
   },
   "repository": {
     "type": "git",
