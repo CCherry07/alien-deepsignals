@@ -64,6 +64,15 @@ export function endBatch() {
   }
 }
 
+export function batch<T>(fn: () => T): T {
+  startBatch();
+  try {
+    return fn();
+  } finally {
+    endBatch();
+  }
+}
+
 function flush() {
   while (queue.length > 0) {
     queue.shift()!.scheduler();
