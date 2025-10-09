@@ -1,4 +1,4 @@
-import { ReactiveFlags } from "./contents";
+import { SignalFlags } from "./contents";
 import { computed, Signal, signal } from "./core";
 
 const proxyToSignals = new WeakMap();
@@ -40,7 +40,7 @@ export const peek = <
   return value as RevertDeepSignal<RevertDeepSignalObject<T>[K]>;
 };
 
-const shallowFlag = Symbol(ReactiveFlags.IS_SHALLOW);
+const shallowFlag = Symbol(SignalFlags.IS_SHALLOW);
 export function shallow<T extends object>(obj: T): Shallow<T> {
   ignore.add(obj);
   return obj as Shallow<T>;

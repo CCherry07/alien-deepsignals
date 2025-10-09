@@ -1,4 +1,5 @@
 import { createReactiveSystem, Link, ReactiveNode, ReactiveFlags } from 'alien-signals/system';
+import { SignalFlags } from './contents';
 
 const {
   link,
@@ -94,6 +95,7 @@ function shouldUpdate(sub: ReactiveNode): boolean {
 }
 
 export class Signal<T = any> implements ReactiveNode {
+  readonly [SignalFlags.IS_SIGNAL] = true;
   subs: Link | undefined = undefined;
   subsTail: Link | undefined = undefined;
   flags: ReactiveFlags = ReactiveFlags.Mutable;
@@ -148,6 +150,7 @@ export class Signal<T = any> implements ReactiveNode {
 }
 
 export class Computed<T = any> implements ReactiveNode {
+  readonly [SignalFlags.IS_SIGNAL] = true;
   currentValue: T | undefined = undefined;
   subs: Link | undefined = undefined;
   subsTail: Link | undefined = undefined;

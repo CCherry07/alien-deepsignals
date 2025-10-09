@@ -14,4 +14,7 @@ export {
   isSet,
   isString,
   isSymbol,
+  isSignal,
+  unSignal,
+  toValue
 } from "./utils"

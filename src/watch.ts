@@ -1,7 +1,7 @@
 import { Computed, Effect, isSignal, Signal } from './core';
 import { hasChanged, isArray, isFunction, isMap, isObject, isPlainObject, isSet, NOOP } from './utils';
 import { isDeepSignal, isShallow } from "./deepSignal"
-import { ReactiveFlags } from './contents';
+import { SignalFlags } from './contents';
 
 export type OnCleanup = (cleanupFn: () => void) => void
 export type WatchEffect = (onCleanup: OnCleanup) => void
@@ -217,9 +217,7 @@ export function traverse(
   depth: number = Infinity,
   seen?: Set<unknown>,
 ): unknown {
-  console.log(value);
-  
-  if (depth <= 0 || !isObject(value) || (value as any)[ReactiveFlags.SKIP]) {
+  if (depth <= 0 || !isObject(value) || (value as any)[SignalFlags.SKIP]) {
     return value
   }
 

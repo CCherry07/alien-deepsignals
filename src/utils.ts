@@ -1,3 +1,6 @@
+import { SignalFlags } from "./contents"
+import { Computed, Signal } from "./core"
+
 export const objectToString: typeof Object.prototype.toString =
   Object.prototype.toString
 export const toTypeString = (value: unknown): string =>
@@ -39,3 +42,22 @@ export const hasChanged = (value: any, oldValue: any): boolean =>
   !Object.is(value, oldValue)
 
 export function NOOP() {}
+
+export function isSignal<T>(r: Signal<T> | unknown): r is Signal<T>
+export function isSignal(r: any): r is Signal {
+  return r ? r[SignalFlags.IS_SIGNAL] === true : false
+}
+
+export type MaybeSignal<T = any> =
+  | T
+  | Signal<T>
+
+export type MaybeSignalOrGetter<T = any> = MaybeSignal<T> | Computed<T> | (() => T)
+
+export function unSignal<T>(signal: MaybeSignal<T> | Computed<T>): T {
+  return (isSignal(signal) ? signal.value : signal) as T;
+}
+
+export function toValue<T>(source: MaybeSignalOrGetter<T>): T {
+  return isFunction(source) ? source() : unSignal(source)
+}
