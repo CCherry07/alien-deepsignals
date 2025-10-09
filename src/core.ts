@@ -145,7 +145,7 @@ export class Signal<T = any> implements ReactiveNode {
   }
 
   peek(): T {
-    return this.currentValue;
+    return this.pendingValue;
   }
 }
 
