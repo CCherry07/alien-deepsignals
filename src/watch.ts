@@ -158,11 +158,10 @@ export function watch(
     : INITIAL_WATCHER_VALUE
 
   const job = (immediateFirstRun?: boolean) => {
-    if (!effect.active || (!immediateFirstRun && !effect.dirty)) {
+    if ((!immediateFirstRun && !effect.shouldUpdate)) {
       return
     }
     if (cb) {
-      // watch(source, cb)
       const newValue = effect.run()
 
       if (
@@ -218,6 +217,8 @@ export function traverse(
   depth: number = Infinity,
   seen?: Set<unknown>,
 ): unknown {
+  console.log(value);
+  
   if (depth <= 0 || !isObject(value) || (value as any)[ReactiveFlags.SKIP]) {
     return value
   }

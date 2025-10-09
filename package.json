@@ -24,10 +24,10 @@
     "release": "bumpp && npm run build && npm publish --registry=https://registry.npmjs.org/"
   },
   "dependencies": {
-    "alien-signals": "^1.0.13"
+    "alien-signals": "^3.0.13"
   },
   "peerDependencies": {
-    "alien-signals": "^1.0.13"
+    "alien-signals": "^3.0.13"
   },
   "devDependencies": {
     "@types/node": "^22.10.9",
