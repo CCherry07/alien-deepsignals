@@ -7,6 +7,8 @@ export const tsup: Options = {
   format: ['esm', 'cjs'],
   dts: true,
   clean: true,
+  shims: false,
   minify: false,
   treeshake: true,
+  external: ['alien-signals'],
 }
