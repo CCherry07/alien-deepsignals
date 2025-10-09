@@ -1,5 +1,5 @@
-import { Computed, Effect, isSignal, Signal } from './core';
-import { hasChanged, isArray, isFunction, isMap, isObject, isPlainObject, isSet, NOOP } from './utils';
+import { Computed, Effect, Signal } from './core';
+import { hasChanged, isArray, isFunction, isMap, isObject, isPlainObject, isSet, isSignal, NOOP } from './utils';
 import { isDeepSignal, isShallow } from "./deepSignal"
 import { SignalFlags } from './contents';
 

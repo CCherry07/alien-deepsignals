@@ -250,8 +250,3 @@ export class Effect<T = any> implements ReactiveNode {
     return shouldUpdate(this);
   }
 }
-
-
-export function isSignal(value: unknown): value is Signal {
-  return value instanceof Signal || (value as any)?.[ReactiveFlags.Mutable] === ReactiveFlags.Mutable;
-}
