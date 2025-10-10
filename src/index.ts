@@ -16,5 +16,6 @@ export {
   isSymbol,
   isSignal,
   unSignal,
-  toValue
+  toValue,
 } from "./utils"
+export type { MaybeSignal, MaybeSignalOrGetter } from "./utils"
