@@ -1,6 +1,6 @@
 {
   "name": "alien-deepsignals",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "private": false,
   "author": "CCherry07",
   "license": "MIT",
@@ -24,10 +24,10 @@
     "release": "bumpp && npm run build && npm publish --registry=https://registry.npmjs.org/"
   },
   "dependencies": {
-    "alien-signals": "^3.0.13"
+    "alien-signals": "^3.0.1"
   },
   "peerDependencies": {
-    "alien-signals": "^3.0.13"
+    "alien-signals": "^3.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.9",
