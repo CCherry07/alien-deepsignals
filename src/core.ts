@@ -96,14 +96,14 @@ function shouldUpdate(sub: ReactiveNode): boolean {
 
 export class Signal<T = any> implements ReactiveNode {
   readonly [SignalFlags.IS_SIGNAL] = true;
+  private pendingValue: T;
   subs: Link | undefined = undefined;
   subsTail: Link | undefined = undefined;
   flags: ReactiveFlags = ReactiveFlags.Mutable;
   currentValue: T;
-  pendingValue: T;
-
+  
   constructor(value: T) {
-    this.pendingValue = this.currentValue = value;
+    this.currentValue = this.pendingValue = value;
   }
 
   get(): T {
@@ -116,11 +116,11 @@ export class Signal<T = any> implements ReactiveNode {
     if (activeSub !== undefined) {
       link(this, activeSub, cycle);
     }
-    return this.currentValue;
+    return this.pendingValue;
   }
 
   set(value: T): void {
-    this.pendingValue = value;
+    this.currentValue = value;
     this.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
     const subs = this.subs;
     if (subs !== undefined) {
@@ -133,7 +133,7 @@ export class Signal<T = any> implements ReactiveNode {
 
   update() {
     this.flags = ReactiveFlags.Mutable;
-    return this.currentValue !== (this.currentValue = this.pendingValue);
+    return this.pendingValue !== (this.pendingValue = this.currentValue);
   }
 
   get value(): T {
@@ -145,12 +145,12 @@ export class Signal<T = any> implements ReactiveNode {
   }
 
   peek(): T {
-    return this.pendingValue;
+    return this.currentValue;
   }
 }
 
 export class Computed<T = any> implements ReactiveNode {
-  readonly [SignalFlags.IS_SIGNAL] = true;
+  readonly [SignalFlags.IS_COMPUTED] = true;
   currentValue: T | undefined = undefined;
   subs: Link | undefined = undefined;
   subsTail: Link | undefined = undefined;

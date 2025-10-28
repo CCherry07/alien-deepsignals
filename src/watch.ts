@@ -1,5 +1,5 @@
 import { Computed, Effect, Signal } from './core';
-import { hasChanged, isArray, isFunction, isMap, isObject, isPlainObject, isSet, isSignal, NOOP } from './utils';
+import { hasChanged, isArray, isComputed, isFunction, isMap, isObject, isPlainObject, isSet, isSignal, NOOP } from './utils';
 import { isDeepSignal, isShallow } from "./deepSignal"
 import { SignalFlags } from './contents';
 
@@ -98,7 +98,7 @@ export function watch(
     }
   }
 
-  if (isSignal(source)) {
+  if (isSignal(source) || isComputed(source)) {
     getter = () => source.value
     forceTrigger = isShallow(source)
   } else if (isDeepSignal(source)) {
@@ -109,7 +109,7 @@ export function watch(
     forceTrigger = source.some(s => isDeepSignal(s) || isShallow(s))
     getter = () =>
       source.map(s => {
-        if (isSignal(s)) {
+        if (isSignal(s) || isComputed(s)) {
           return s.value
         } else if (isDeepSignal(s)) {
           return signalGetter(s)
@@ -227,7 +227,7 @@ export function traverse(
   }
   seen.add(value)
   depth--
-  if (isSignal(value)) {
+  if (isSignal(value) || isComputed(value)) {
     traverse(value.value, depth, seen)
   } else if (isArray(value)) {
     for (let i = 0; i < value.length; i++) {

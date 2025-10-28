@@ -48,6 +48,11 @@ export function isSignal(r: any): r is Signal {
   return r ? r[SignalFlags.IS_SIGNAL] === true : false
 }
 
+export function isComputed<T>(r: Computed<T> | unknown): r is Computed<T>
+export function isComputed<T>(r: any): r is Computed<T> {
+  return r ? r[SignalFlags.IS_COMPUTED] === true : false
+}
+
 export type MaybeSignal<T = any> =
   | T
   | Signal<T>
@@ -55,7 +60,7 @@ export type MaybeSignal<T = any> =
 export type MaybeSignalOrGetter<T = any> = MaybeSignal<T> | Computed<T> | (() => T)
 
 export function unSignal<T>(signal: MaybeSignal<T> | Computed<T>): T {
-  return (isSignal(signal) ? signal.value : signal) as T;
+  return (isSignal(signal) || isComputed(signal) ? signal.value : signal) as T;
 }
 
 export function toValue<T>(source: MaybeSignalOrGetter<T>): T {

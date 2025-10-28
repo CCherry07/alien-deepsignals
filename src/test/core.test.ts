@@ -1,14 +1,9 @@
 import { batch, computed } from "../index"
 import { isSignal, unSignal, toValue } from "../utils"
-import { describe, it, expect, beforeEach } from "vitest"
-import { signal, Signal, effect } from "..";
+import { describe, it, expect } from "vitest"
+import { signal, effect } from "..";
 
 describe('core', () => {
-  beforeEach(() => {
-    // reset all signals
-    (Signal as any).resetAll && (Signal as any).resetAll();
-  });
-
   it('basic signal', () => {
     const a = signal(1);
     expect(a.value).toBe(1);
@@ -118,8 +113,10 @@ describe('core', () => {
 
   it('isSignal', () => {
     const a = signal(1);
+    const b = computed(()=> a.value)
     expect(isSignal(a)).toBe(true);
     expect(isSignal(1)).toBe(false);
+    expect(isSignal(b)).toBe(false);
   });
 
   it('toValue', () => {
