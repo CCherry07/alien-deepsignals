@@ -44,8 +44,8 @@ const state = deepSignal({
   array: [1, 2, 3],
 });
 state.count++;
-state.$nested.value.deep = 'new value';
-state.$array.value.push(4);
+state.$nested().deep = 'new value';
+state.$array().push(4);
 ```
 ### watch
 ```ts
@@ -67,4 +67,3 @@ watch(state,(value)=>{
   // once
 })
 ```
-
