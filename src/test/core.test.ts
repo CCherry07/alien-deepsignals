@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { signal, effect, computed, batch } from '..'
+import { signal, effect, computed, batch, isSignal, toValue, unSignal } from '..'
 
 describe('core', () => {
   it('basic signal', () => {
@@ -104,27 +104,27 @@ describe('core', () => {
     expect(dummy).toBe(5)
   })
 
-  // it('unSignal', () => {
-  //   const a = signal(1)
-  //   expect(unSignal(a)).toBe(1)
-  // })
+  it('unSignal', () => {
+    const a = signal(1)
+    expect(unSignal(a)).toBe(1)
+  })
 
-  // it('isSignal', () => {
-  //   const a = signal(1)
-  //   const b = computed(() => a())
-  //   expect(isSignal(a)).toBe(true)
-  //   expect(isSignal(1)).toBe(false)
-  //   expect(isSignal(b)).toBe(false)
-  // })
+  it('isSignal', () => {
+    const a = signal(1)
+    const b = computed(() => a())
+    expect(isSignal(a)).toBe(true)
+    expect(isSignal(1)).toBe(false)
+    expect(isSignal(b)).toBe(false)
+  })
 
-  // it('toValue', () => {
-  //   const a = signal(1)
-  //   expect(toValue(a)).toBe(1)
-  //   expect(toValue(2)).toBe(2)
-  //   expect(toValue(() => 3)).toBe(3)
-  //   const b = computed(() => a() + 1)
-  //   expect(toValue(b)).toBe(2)
-  // })
+  it('toValue', () => {
+    const a = signal(1)
+    const b = computed(() => a() + 1)
+    expect(toValue(a)).toBe(1)
+    expect(toValue(2)).toBe(2)
+    expect(toValue(() => 3)).toBe(3)
+    expect(toValue(b)).toBe(2)
+  })
 
   it('peek', () => {
     const a = signal(1)

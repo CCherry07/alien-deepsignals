@@ -1,4 +1,3 @@
-export * from 'alien-signals'
 import { endBatch, startBatch } from 'alien-signals'
 
 export type Signal<T = any> = {

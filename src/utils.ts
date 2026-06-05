@@ -1,4 +1,4 @@
-import { isComputed as isAlienComputed, isSignal as isAlienSignal } from 'alien-signals'
+import { isComputed as isAlienComputed, isSignal as isAlienSignal, setActiveSub } from 'alien-signals'
 import type { Computed, Signal } from './core'
 
 export const objectToString: typeof Object.prototype.toString = Object.prototype.toString
@@ -37,4 +37,13 @@ export function toValue<T>(source: MaybeSignalOrGetter<T>): T {
   if (isSignal(source) || isComputed(source)) return source()
   if (isFunction(source)) return (source as () => T)()
   return source as T
+}
+
+export const peekSignal = <T>(source: Signal | Computed): T => {
+  const prevSub = setActiveSub()
+  try {
+    return source()
+  } finally {
+    setActiveSub(prevSub)
+  }
 }

@@ -8,7 +8,7 @@ export type OnCleanup = (cleanupFn: () => void) => void
 export type WatchEffect = (onCleanup: OnCleanup) => void
 
 export type WatchSource<T = any> = Signal<T> | Computed<T> | (() => T)
-export type WatchFlush = 'post' | 'sync'
+export type WatchFlush = 'pre' | 'post' | 'sync'
 
 export interface WatchOptions<Immediate = boolean> {
   immediate?: Immediate
@@ -29,7 +29,7 @@ export interface WatchHandle {
 const INITIAL_WATCHER_VALUE = {}
 
 export function watch(source: WatchSource | WatchSource[] | WatchEffect | object, cb?: WatchCallback, options: WatchOptions = {}) {
-  const { once, immediate, deep, flush = 'pre', scheduler } = options
+  const { once, immediate, deep, flush = 'sync', scheduler } = options
 
   let getter!: () => any
   let forceTrigger = false
@@ -78,6 +78,7 @@ export function watch(source: WatchSource | WatchSource[] | WatchEffect | object
     }
   }
   const finishCallback = () => {
+    if (isStopped) return
     isPending = false
     runCleanup()
     cb!(pendingNewValue, pendingOldValue, onCleanup)
@@ -118,8 +119,7 @@ export function watch(source: WatchSource | WatchSource[] | WatchEffect | object
       stop = effect(job)
     } else if (pausedDirty) {
       pausedDirty = false
-      const oldValueForCallback = oldValue === INITIAL_WATCHER_VALUE ? undefined : isMultiSource && oldValue[0] === INITIAL_WATCHER_VALUE ? [] : oldValue
-      queueCallback(pausedValue, oldValueForCallback)
+      queueCallback(pausedValue, getOldValueForCallback())
     }
   }
 
@@ -165,15 +165,13 @@ export function watch(source: WatchSource | WatchSource[] | WatchEffect | object
   let oldValue: any = isMultiSource ? new Array((source as []).length).fill(INITIAL_WATCHER_VALUE) : INITIAL_WATCHER_VALUE
 
   let initialized = false
+  const getOldValueForCallback = () => (oldValue === INITIAL_WATCHER_VALUE ? undefined : isMultiSource && oldValue[0] === INITIAL_WATCHER_VALUE ? [] : oldValue)
   const hasChangedValue = (newValue: unknown) => {
     return isMultiSource ? (newValue as any[]).some((value, index) => hasChanged(value, oldValue[index])) : hasChanged(newValue, oldValue)
   }
 
   const job = () => {
-    if (isStopped) return
-
     if (!cb) {
-      if (isPaused) return
       getter()
       return
     }
@@ -198,8 +196,7 @@ export function watch(source: WatchSource | WatchSource[] | WatchEffect | object
       return
     }
 
-    const oldValueForCallback = oldValue === INITIAL_WATCHER_VALUE ? undefined : isMultiSource && oldValue[0] === INITIAL_WATCHER_VALUE ? [] : oldValue
-    queueCallback(newValue, oldValueForCallback)
+    queueCallback(newValue, getOldValueForCallback())
   }
 
   stop = effect(job)
@@ -208,7 +205,7 @@ export function watch(source: WatchSource | WatchSource[] | WatchEffect | object
 }
 
 export function traverse(value: unknown, depth: number = Infinity, seen?: Set<unknown>): unknown {
-  if (depth <= 0 || !isObject(value) || (value as any)[SignalFlags.SKIP]) {
+  if (depth <= 0 || (!isObject(value) && !isSignal(value) && !isComputed(value)) || (value as any)[SignalFlags.SKIP]) {
     return value
   }
 

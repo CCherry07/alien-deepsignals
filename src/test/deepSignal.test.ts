@@ -1,6 +1,5 @@
-import { computed, deepSignal, isSignal, peek, RevertDeepSignal, shallow } from '../index'
+import { computed, deepSignal, isSignal, markRaw, peek, raw, RevertDeepSignal, shallow, signal, effect } from '..'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { signal, effect } from '..'
 type Store = {
   a?: number
   nested: { b?: number }
@@ -265,6 +264,49 @@ describe('deepsignal/core', () => {
 
       expect(peek(store as any, '$a')).to.equal(undefined)
       expect(peek(store, 'a')).to.equal(1)
+    })
+
+    it('should support Reflect operations with custom receivers', () => {
+      const store = deepSignal({
+        a: 1,
+      })
+      const getReceiver = {}
+      const setReceiver = {}
+
+      expect(Reflect.get(store, 'a', getReceiver)).to.equal(1)
+      expect(Reflect.set(store, 'a', 2, setReceiver)).to.equal(true)
+      expect(Reflect.get(store, 'a', setReceiver)).to.equal(2)
+    })
+
+    it('should reuse existing proxies when assigning observed objects', () => {
+      const obj = { id: 1 }
+      const store = deepSignal<{ a: typeof obj; b?: typeof obj }>({
+        a: obj,
+      })
+      const proxied = store.a
+
+      store.b = obj
+
+      expect(store.b).to.equal(proxied)
+    })
+
+    it('should not track assigned signal values while assigning signals', () => {
+      const store = deepSignal<{ a?: number }>({})
+      const a = signal(1)
+      let runs = 0
+
+      effect(() => {
+        runs++
+        store.$a = a
+      })
+
+      expect(runs).to.equal(1)
+      expect(store.a).to.equal(1)
+
+      a(2)
+
+      expect(runs).to.equal(1)
+      expect(store.a).to.equal(2)
     })
 
     it('should copy object like plain JavaScript', () => {
@@ -630,15 +672,17 @@ describe('deepsignal/core', () => {
       expect(x).to.equal(11)
     })
 
-    // it("should trigger subscriptions after mutations happen", () => {
-    // 	let x;
-    // 	store.$a!.subscribe(() => {
-    // 		x = store.a;
-    // 	});
-    // 	expect(x).to.equal(1);
-    // 	store.a = 11;
-    // 	expect(x).to.equal(11);
-    // });
+    it('should trigger subscriptions after mutations happen', () => {
+      let x
+
+      effect(() => {
+        x = store.a
+      })
+
+      expect(x).to.equal(1)
+      store.a = 11
+      expect(x).to.equal(11)
+    })
 
     it('should subscribe corretcly from getters', () => {
       let x
@@ -674,126 +718,106 @@ describe('deepsignal/core', () => {
       expect(data).to.equal('b')
     })
 
-    // it("should subscribe to changes", () => {
-    // 	const spy1 = sinon.spy(() => store.a);
-    // 	const spy2 = sinon.spy(() => store.nested);
-    // 	const spy3 = sinon.spy(() => store.nested.b);
-    // 	const spy4 = sinon.spy(() => store.array[0]);
-    // 	const spy5 = sinon.spy(
-    // 		() => typeof store.array[1] === "object" && store.array[1].b
-    // 	);
+    it('should subscribe to changes', () => {
+      const runs = [0, 0, 0, 0, 0]
+      let aValue
+      let nestedValue
+      let nestedBValue
+      let arrayFirstValue
+      let arrayNestedBValue
 
-    // 	effect(spy1);
-    // 	effect(spy2);
-    // 	effect(spy3);
-    // 	effect(spy4);
-    // 	effect(spy5);
+      effect(() => {
+        runs[0]++
+        aValue = store.a
+      })
+      effect(() => {
+        runs[1]++
+        nestedValue = store.nested
+      })
+      effect(() => {
+        runs[2]++
+        nestedBValue = store.nested.b
+      })
+      effect(() => {
+        runs[3]++
+        arrayFirstValue = store.array[0]
+      })
+      effect(() => {
+        runs[4]++
+        arrayNestedBValue = typeof store.array[1] === 'object' && store.array[1].b
+      })
 
-    // 	expect(spy1).callCount(1);
-    // 	expect(spy2).callCount(1);
-    // 	expect(spy3).callCount(1);
-    // 	expect(spy4).callCount(1);
-    // 	expect(spy5).callCount(1);
+      expect(runs).to.deep.equal([1, 1, 1, 1, 1])
+      expect(aValue).to.equal(1)
+      expect(nestedValue).to.deep.equal({ b: 2 })
+      expect(nestedBValue).to.equal(2)
+      expect(arrayFirstValue).to.equal(3)
+      expect(arrayNestedBValue).to.equal(2)
 
-    // 	store.a = 11;
+      store.a = 11
+      expect(runs).to.deep.equal([2, 1, 1, 1, 1])
 
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(1);
-    // 	expect(spy3).callCount(1);
-    // 	expect(spy4).callCount(1);
-    // 	expect(spy5).callCount(1);
+      store.nested.b = 22
+      expect(runs).to.deep.equal([2, 1, 2, 1, 2])
 
-    // 	store.nested.b = 22;
+      store.nested = { b: 222 }
+      expect(runs).to.deep.equal([2, 2, 3, 1, 2])
 
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(1);
-    // 	expect(spy3).callCount(2);
-    // 	expect(spy4).callCount(1);
-    // 	expect(spy5).callCount(2); // nested also exists array[1]
+      store.array[0] = 33
+      expect(runs).to.deep.equal([2, 2, 3, 2, 2])
 
-    // 	store.nested = { b: 222 };
+      if (typeof store.array[1] === 'object') store.array[1].b = 2222
+      expect(runs).to.deep.equal([2, 2, 3, 2, 3])
 
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(2);
-    // 	expect(spy3).callCount(3);
-    // 	expect(spy4).callCount(1);
-    // 	expect(spy5).callCount(2); // now store.nested has a different reference
+      store.array[1] = { b: 22222 }
+      expect(runs).to.deep.equal([2, 2, 3, 2, 4])
 
-    // 	store.array[0] = 33;
+      store.array.push(4)
+      expect(runs).to.deep.equal([2, 2, 3, 2, 4])
 
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(2);
-    // 	expect(spy3).callCount(3);
-    // 	expect(spy4).callCount(2);
-    // 	expect(spy5).callCount(2);
+      store.array[3] = 5
+      expect(runs).to.deep.equal([2, 2, 3, 2, 4])
 
-    // 	if (typeof store.array[1] === "object") store.array[1].b = 2222;
+      store.array = [333, { b: 222222 }]
+      expect(runs).to.deep.equal([2, 2, 3, 3, 5])
+      expect(aValue).to.equal(11)
+      expect(nestedBValue).to.equal(222)
+      expect(arrayFirstValue).to.equal(333)
+      expect(arrayNestedBValue).to.equal(222222)
+    })
 
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(2);
-    // 	expect(spy3).callCount(3);
-    // 	expect(spy4).callCount(2);
-    // 	expect(spy5).callCount(3);
+    it('should subscribe to array length', () => {
+      const array = [1]
+      const store = deepSignal({ array })
+      const runs = [0, 0]
+      let lengthValue = 0
+      let mappedValue: number[] = []
 
-    // 	store.array[1] = { b: 22222 };
+      effect(() => {
+        runs[0]++
+        lengthValue = store.array.length
+      })
+      effect(() => {
+        runs[1]++
+        mappedValue = store.array.map((i: number) => i)
+      })
 
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(2);
-    // 	expect(spy3).callCount(3);
-    // 	expect(spy4).callCount(2);
-    // 	expect(spy5).callCount(4);
+      expect(runs).to.deep.equal([1, 1])
+      expect(lengthValue).to.equal(1)
+      expect(mappedValue).to.deep.equal([1])
 
-    // 	store.array.push(4);
+      store.array.push(2)
+      expect(store.array.length).to.equal(2)
+      expect(runs).to.deep.equal([2, 2])
 
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(2);
-    // 	expect(spy3).callCount(3);
-    // 	expect(spy4).callCount(2);
-    // 	expect(spy5).callCount(4);
+      store.array[2] = 3
+      expect(store.array.length).to.equal(3)
+      expect(runs).to.deep.equal([3, 3])
 
-    // 	store.array[3] = 5;
-
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(2);
-    // 	expect(spy3).callCount(3);
-    // 	expect(spy4).callCount(2);
-    // 	expect(spy5).callCount(4);
-
-    // 	store.array = [333, { b: 222222 }];
-
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(2);
-    // 	expect(spy3).callCount(3);
-    // 	expect(spy4).callCount(3);
-    // 	expect(spy5).callCount(5);
-    // });
-
-    // it("should subscribe to array length", () => {
-    // 	const array = [1];
-    // 	const store = deepSignal({ array });
-    // 	const spy1 = sinon.spy(() => store.array.length);
-    // 	const spy2 = sinon.spy(() => store.array.map((i: number) => i));
-
-    // 	effect(spy1);
-    // 	effect(spy2);
-    // 	expect(spy1).callCount(1);
-    // 	expect(spy2).callCount(1);
-
-    // 	store.array.push(2);
-    // 	expect(store.array.length).to.equal(2);
-    // 	expect(spy1).callCount(2);
-    // 	expect(spy2).callCount(2);
-
-    // 	store.array[2] = 3;
-    // 	expect(store.array.length).to.equal(3);
-    // 	expect(spy1).callCount(3);
-    // 	expect(spy2).callCount(3);
-
-    // 	store.array = store.array.filter((i: number) => i <= 2);
-    // 	expect(store.array.length).to.equal(2);
-    // 	expect(spy1).callCount(4);
-    // 	expect(spy2).callCount(4);
-    // });
+      store.array = store.array.filter((i: number) => i <= 2)
+      expect(store.array.length).to.equal(2)
+      expect(runs).to.deep.equal([4, 4])
+    })
 
     it('should be able to reset values with Object.assign and still react to changes', () => {
       const initialNested = { ...nested }
@@ -844,57 +868,93 @@ describe('deepsignal/core', () => {
       expect(store()).to.equal(2)
     })
 
-    // it("should not subscribe to changes when peeking", () => {
-    // 	const spy1 = sinon.spy(() => peek(store, "a"));
-    // 	const spy2 = sinon.spy(() => peek(store, "nested"));
-    // 	const spy3 = sinon.spy(() => peek(store, "nested").b);
-    // 	const spy4 = sinon.spy(() => peek(store, "array")[0]);
-    // 	const spy5 = sinon.spy(() => {
-    // 		const nested = peek(store, "array")[1];
-    // 		typeof nested === "object" && nested.b;
-    // 	});
-    // 	const spy6 = sinon.spy(() => peek(store, "array").length);
+    it('should not subscribe to changes when peeking', () => {
+      const runs = [0, 0, 0, 0, 0, 0]
+      let aValue
+      let nestedValue
+      let nestedChildValue
+      let arrayValue
+      let arrayNestedValue
+      let arrayLength
 
-    // 	effect(spy1);
-    // 	effect(spy2);
-    // 	effect(spy3);
-    // 	effect(spy4);
-    // 	effect(spy5);
-    // 	effect(spy6);
+      effect(() => {
+        runs[0]++
+        aValue = peek(store, 'a')
+      })
+      effect(() => {
+        runs[1]++
+        nestedValue = peek(store, 'nested')
+      })
+      effect(() => {
+        runs[2]++
+        nestedChildValue = peek(store, 'nested').b
+      })
+      effect(() => {
+        runs[3]++
+        arrayValue = peek(store, 'array')[0]
+      })
+      effect(() => {
+        runs[4]++
+        const nested = peek(store, 'array')[1]
+        arrayNestedValue = typeof nested === 'object' && nested.b
+      })
+      effect(() => {
+        runs[5]++
+        arrayLength = peek(store, 'array').length
+      })
 
-    // 	expect(spy1).callCount(1);
-    // 	expect(spy2).callCount(1);
-    // 	expect(spy3).callCount(1);
-    // 	expect(spy4).callCount(1);
-    // 	expect(spy5).callCount(1);
-    // 	expect(spy6).callCount(1);
+      expect(runs).to.deep.equal([1, 1, 1, 1, 1, 1])
+      expect(aValue).to.equal(1)
+      expect(nestedValue).to.deep.equal({ b: 2 })
+      expect(nestedChildValue).to.equal(2)
+      expect(arrayValue).to.equal(3)
+      expect(arrayNestedValue).to.equal(2)
+      expect(arrayLength).to.equal(2)
 
-    // 	store.a = 11;
-    // 	store.nested.b = 22;
-    // 	store.nested = { b: 222 };
-    // 	store.array[0] = 33;
-    // 	if (typeof store.array[1] === "object") store.array[1].b = 2222;
-    // 	store.array.push(4);
+      store.a = 11
+      store.nested.b = 22
+      store.nested = { b: 222 }
+      store.array[0] = 33
+      if (typeof store.array[1] === 'object') store.array[1].b = 2222
+      store.array.push(4)
 
-    // 	expect(spy1).callCount(1);
-    // 	expect(spy2).callCount(1);
-    // 	expect(spy3).callCount(1);
-    // 	expect(spy4).callCount(1);
-    // 	expect(spy5).callCount(1);
-    // 	expect(spy6).callCount(1);
-    // });
+      expect(runs).to.deep.equal([1, 1, 1, 1, 1, 1])
+      expect(aValue).to.equal(1)
+      expect(nestedValue).not.to.equal(store.nested)
+      expect(nestedValue).to.deep.equal({ b: 2222 })
+      expect(nestedChildValue).to.equal(2)
+      expect(arrayValue).to.equal(3)
+      expect(arrayNestedValue).to.equal(2)
+      expect(arrayLength).to.equal(2)
+    })
 
-    // it("should subscribe to some changes but not other when peeking inside an object", () => {
-    // 	const spy1 = sinon.spy(() => peek(store.nested, "b"));
-    // 	effect(spy1);
-    // 	expect(spy1).callCount(1);
-    // 	store.nested.b = 22;
-    // 	expect(spy1).callCount(1);
-    // 	store.nested = { b: 222 };
-    // 	expect(spy1).callCount(2);
-    // 	store.nested.b = 2222;
-    // 	expect(spy1).callCount(2);
-    // });
+    it('should subscribe to some changes but not other when peeking inside an object', () => {
+      let runs = 0
+      let value
+
+      effect(() => {
+        runs++
+        value = peek(store.nested, 'b')
+      })
+
+      expect(runs).to.equal(1)
+      expect(value).to.equal(2)
+
+      store.nested.b = 22
+
+      expect(runs).to.equal(1)
+      expect(value).to.equal(2)
+
+      store.nested = { b: 222 }
+
+      expect(runs).to.equal(2)
+      expect(value).to.equal(222)
+
+      store.nested.b = 2222
+
+      expect(runs).to.equal(2)
+      expect(value).to.equal(222)
+    })
 
     it('should support returning peek from getters', () => {
       const store = deepSignal({
@@ -963,11 +1023,13 @@ describe('deepsignal/core', () => {
       expect(store.obj).to.equal(obj)
     })
 
-    // it("should not wrap elements in proxies", () => {
-    // 	const el = window.document.createElement("div");
-    // 	const store = deepSignal({ el });
-    // 	expect(store.el).to.equal(el);
-    // });
+    it('should not wrap elements in proxies', () => {
+      const document = (window as { document?: { createElement: (tagName: string) => unknown } }).document
+      if (!document) return
+      const el = document.createElement('div')
+      const store = deepSignal({ el })
+      expect(store.el).to.equal(el)
+    })
 
     it('should wrap global objects', () => {
       window.obj = { b: 2 }
@@ -1035,9 +1097,9 @@ describe('deepsignal/core', () => {
   })
 
   describe('shallow', () => {
-    it('should not proxy shallow objects', () => {
-      const shallowObj1 = { a: 1 }
-      let shallowObj2 = { b: 2 }
+    it('should proxy only shallow root properties', () => {
+      const shallowObj1 = { a: 1, nested: { b: 2 } }
+      let shallowObj2 = { c: 3 }
       const deepObj = { c: 3 }
       shallowObj2 = shallow(shallowObj2)
       const store = deepSignal({
@@ -1046,22 +1108,20 @@ describe('deepsignal/core', () => {
         deepObj,
       })
       expect(store.shallowObj1.a).to.equal(1)
-      expect(store.shallowObj2.b).to.equal(2)
+      expect(store.shallowObj1.nested).to.equal(shallowObj1.nested)
+      expect(store.shallowObj2.c).to.equal(3)
       expect(store.deepObj.c).to.equal(3)
-      expect(store.shallowObj1).to.equal(shallowObj1)
+      expect(store.shallowObj1).to.not.equal(shallowObj1)
       expect(store.shallowObj2).to.equal(shallowObj2)
       expect(store.deepObj).to.not.equal(deepObj)
     })
 
-    it('should not proxy shallow objects if shallow is called on the reference before accessing the property', () => {
-      const shallowObj = { a: 1 }
-      const deepObj = { c: 3 }
-      const store = deepSignal({ shallowObj, deepObj })
-      shallow(shallowObj)
-      expect(store.shallowObj.a).to.equal(1)
-      expect(store.deepObj.c).to.equal(3)
-      expect(store.shallowObj).to.equal(shallowObj)
-      expect(store.deepObj).to.not.equal(deepObj)
+    it('should reuse shallow proxies', () => {
+      const obj = { a: 1 }
+      const shallowObj = shallow(obj)
+
+      expect(shallow(obj)).to.equal(shallowObj)
+      expect(shallow(shallowObj)).to.equal(shallowObj)
     })
 
     it('should observe changes in the shallow object if the reference changes', () => {
@@ -1077,32 +1137,86 @@ describe('deepsignal/core', () => {
       expect(x).to.equal(2)
     })
 
-    it("should stop observing changes in the shallow object if the reference changes and it's not shallow anymore", () => {
+    it('should observe changes in root props of a shallow object', () => {
       const obj = { a: 1 }
       const shallowObj = shallow(obj)
-      const store = deepSignal<{ obj: typeof obj }>({ obj: shallowObj })
       let x
+
       effect(() => {
-        x = store.obj.a
+        x = shallowObj.a
       })
+
       expect(x).to.equal(1)
-      store.obj = { a: 2 }
+      shallowObj.a = 2
       expect(x).to.equal(2)
-      store.obj.a = 3
-      expect(x).to.equal(3)
     })
 
-    it('should not observe changes in the props of the shallow object', () => {
-      const obj = { a: 1 }
+    it('should not observe changes in nested props of a shallow object', () => {
+      const obj = { nested: { a: 1 } }
       const shallowObj = shallow(obj)
-      const store = deepSignal({ shallowObj })
       let x
+
       effect(() => {
-        x = store.shallowObj.a
+        x = shallowObj.nested.a
       })
+
       expect(x).to.equal(1)
-      store.shallowObj.a = 2
+      shallowObj.nested.a = 2
       expect(x).to.equal(1)
+    })
+
+    it('should observe nested reference changes in a shallow object', () => {
+      const obj = { nested: { a: 1 } }
+      const shallowObj = shallow(obj)
+      let x
+
+      effect(() => {
+        x = shallowObj.nested.a
+      })
+
+      expect(x).to.equal(1)
+      shallowObj.nested = { a: 2 }
+      expect(x).to.equal(2)
+    })
+  })
+
+  describe('markRaw', () => {
+    it('should not proxy marked raw objects', () => {
+      const rawObj = { a: 1 }
+      const deepObj = { b: 2 }
+      const store = deepSignal({
+        rawObj: markRaw(rawObj),
+        deepObj,
+      })
+
+      expect(store.rawObj).to.equal(rawObj)
+      expect(store.deepObj).to.not.equal(deepObj)
+    })
+
+    it('should track marked raw references but not nested mutations', () => {
+      const rawObj = markRaw({ a: 1 })
+      const store = deepSignal({ rawObj })
+      let value
+
+      effect(() => {
+        value = store.rawObj.a
+      })
+
+      expect(value).to.equal(1)
+      store.rawObj.a = 2
+      expect(value).to.equal(1)
+
+      store.rawObj = markRaw({ a: 3 })
+      expect(value).to.equal(3)
+    })
+
+    it('should expose raw as an alias for markRaw', () => {
+      const rawObj = { a: 1 }
+      const store = deepSignal({
+        rawObj: raw(rawObj),
+      })
+
+      expect(store.rawObj).to.equal(rawObj)
     })
   })
 })

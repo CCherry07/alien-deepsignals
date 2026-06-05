@@ -1,11 +1,14 @@
 import { SignalFlags } from './contents'
-import { computed, isSignal, setActiveSub, signal } from 'alien-signals'
+import { computed, isSignal, signal } from 'alien-signals'
 import { Signal } from './core'
+import { peekSignal } from './utils'
 
 const proxyToSignals = new WeakMap()
 const objToProxy = new WeakMap()
+const objToShallowProxy = new WeakMap()
 const arrayToArrayOfSignals = new WeakMap()
 const ignore = new WeakSet()
+const shallowSet = new WeakSet()
 const objToIterable = new WeakMap()
 const rg = /^\$/
 const descriptor = Object.getOwnPropertyDescriptor
@@ -16,7 +19,7 @@ export const isDeepSignal = (source: any) => {
 }
 
 export const isShallow = (source: any) => {
-  return ignore.has(source)
+  return shallowSet.has(source)
 }
 
 export const deepSignal = <T extends object>(obj: T): DeepSignal<T> => {
@@ -36,13 +39,23 @@ export const peek = <T extends DeepSignalObject<object>, K extends keyof RevertD
 
 const shallowFlag = Symbol(SignalFlags.IS_SHALLOW)
 export function shallow<T extends object>(obj: T): Shallow<T> {
-  ignore.add(obj)
-  return obj as Shallow<T>
+  if (!shouldProxy(obj)) return obj as Shallow<T>
+  if (!objToShallowProxy.has(obj)) objToShallowProxy.set(obj, createProxy(obj, shallowHandlers, true) as Shallow<T>)
+  return objToShallowProxy.get(obj)
 }
 
-const createProxy = (target: object, handlers: ProxyHandler<object>) => {
+const rawFlag = Symbol(SignalFlags.SKIP)
+export function markRaw<T extends object>(obj: T): Raw<T> {
+  ignore.add(obj)
+  return obj as Raw<T>
+}
+
+export const raw = markRaw
+
+const createProxy = (target: object, handlers: ProxyHandler<object>, shallow = false) => {
   const proxy = new Proxy(target, handlers)
   ignore.add(proxy)
+  if (shallow) shallowSet.add(proxy)
   proxyToSignals.set(proxy, new Map())
   return proxy
 }
@@ -51,17 +64,8 @@ const throwOnMutation = () => {
   throw new Error("Don't mutate the signals directly.")
 }
 
-const peekSignal = <T>(source: () => T): T => {
-  const prevSub = setActiveSub()
-  try {
-    return source()
-  } finally {
-    setActiveSub(prevSub)
-  }
-}
-
 const get =
-  (isArrayOfSignals: boolean) =>
+  (isArrayOfSignals: boolean, wrapValues = true) =>
   (target: object, fullKey: string, receiver: object): unknown => {
     if (peeking) return Reflect.get(target, fullKey, receiver)
     let returnSignal = isArrayOfSignals || fullKey[0] === '$'
@@ -85,7 +89,7 @@ const get =
       if (returnSignal && typeof value === 'function') return
       if (typeof key === 'symbol' && wellKnownSymbols.has(key)) return value
       if (!signals.has(key)) {
-        if (shouldProxy(value)) {
+        if (wrapValues && shouldProxy(value)) {
           if (!objToProxy.has(value)) objToProxy.set(value, createProxy(value, objectHandlers))
           value = objToProxy.get(value)
         }
@@ -96,9 +100,9 @@ const get =
     return returnSignal ? item : item()
   }
 
-const objectHandlers = {
-  get: get(false),
-  set(target: object, fullKey: string, val: any, receiver: object): boolean {
+const set =
+  (wrapValues: boolean) =>
+  (target: object, fullKey: string, val: any, receiver: object): boolean => {
     if (typeof descriptor(target, fullKey)?.set === 'function') return Reflect.set(target, fullKey, val, receiver)
     if (!proxyToSignals.has(receiver)) proxyToSignals.set(receiver, new Map())
     const signals = proxyToSignals.get(receiver)
@@ -109,7 +113,7 @@ const objectHandlers = {
       return Reflect.set(target, key, peekSignal(val), receiver)
     } else {
       let internal = val
-      if (shouldProxy(val)) {
+      if (wrapValues && shouldProxy(val)) {
         if (!objToProxy.has(val)) objToProxy.set(val, createProxy(val, objectHandlers))
         internal = objToProxy.get(val)
       }
@@ -125,7 +129,11 @@ const objectHandlers = {
       if (Array.isArray(target) && signals.has('length')) signals.get('length')(target.length)
       return result
     }
-  },
+  }
+
+const objectHandlers = {
+  get: get(false),
+  set: set(true),
   deleteProperty(target: object, key: string): boolean {
     if (key[0] === '$') throwOnMutation()
     const signals = proxyToSignals.get(objToProxy.get(target))
@@ -142,6 +150,13 @@ const objectHandlers = {
     ;(objToIterable as any)._ = objToIterable.get(target)()
     return Reflect.ownKeys(target)
   },
+}
+
+const shallowHandlers = {
+  get: get(false, false),
+  set: set(false),
+  deleteProperty: objectHandlers.deleteProperty,
+  ownKeys: objectHandlers.ownKeys,
 }
 
 const arrayHandlers = {
@@ -163,7 +178,7 @@ const shouldProxy = (val: any): boolean => {
 
 /** TYPES **/
 
-export type DeepSignal<T> = T extends Function ? T : T extends { [shallowFlag]: true } ? T : T extends Array<unknown> ? DeepSignalArray<T> : T extends object ? DeepSignalObject<T> : T
+export type DeepSignal<T> = T extends Function ? T : T extends { [shallowFlag]: true } ? T : T extends { [rawFlag]: true } ? T : T extends Array<unknown> ? DeepSignalArray<T> : T extends object ? DeepSignalObject<T> : T
 
 type DeepSignalObject<T extends object> = {
   [P in keyof T & string as `$${P}`]?: T[P] extends Function ? never : Signal<T[P]>
@@ -198,6 +213,7 @@ type DeepSignalArray<T> = DeepArray<ArrayType<T>> & {
 }
 
 export type Shallow<T extends object> = T & { [shallowFlag]: true }
+export type Raw<T extends object> = T & { [rawFlag]: true }
 
 export declare const useDeepSignal: <T extends object>(obj: T) => DeepSignal<T>
 // @ts-ignore
