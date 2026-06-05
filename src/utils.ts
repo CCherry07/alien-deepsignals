@@ -39,7 +39,7 @@ export function toValue<T>(source: MaybeSignalOrGetter<T>): T {
   return source as T
 }
 
-export const peekSignal = <T>(source: Signal | Computed): T => {
+export const peekSignal = <T>(source: Signal<T> | Computed<T>): T => {
   const prevSub = setActiveSub()
   try {
     return source()
