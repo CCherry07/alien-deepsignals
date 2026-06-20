@@ -1,58 +1,74 @@
-import { describe, expect, it } from "vitest";
-import { computed, signal } from "../core";
-import { deepSignal, shallow } from "../deepSignal";
-import { traverse, watch } from "../watch";
-import { watchEffect } from "../watchEffect";
+import { describe, expect, it } from 'vitest'
+import { deepSignal, shallow } from '../deepSignal'
+import { traverse, watch } from '../watch'
+import { watchEffect } from '../watchEffect'
+import { computed, signal } from 'alien-signals'
 
 describe('watch', () => {
   it('watch immediate', () => {
     const store = deepSignal({
       userinfo: {
-        name: "tom"
-      }
+        name: 'tom',
+      },
     })
     let val!: string
-    watch(store, (newValue) => {
-      val = newValue.userinfo.name
-    }, {
-      immediate: true,
-      deep: true
-    })
+    watch(
+      store,
+      newValue => {
+        val = newValue.userinfo.name
+      },
+      {
+        immediate: true,
+        deep: true,
+      },
+    )
     expect(val).toEqual('tom')
   })
   it('watch deep', () => {
     const store = deepSignal({
       userinfo: {
-        name: "tom"
-      }
+        name: 'tom',
+      },
     })
     let val!: string
-    watch(store, (newValue) => {
-      val = newValue.userinfo.name
-    }, {
-      immediate: true,
-      deep: true
-    })
+    watch(
+      store,
+      newValue => {
+        val = newValue.userinfo.name
+      },
+      {
+        immediate: true,
+        deep: true,
+      },
+    )
     let value2!: string
-    watch(store, (newValue) => {
-      value2 = newValue.userinfo.name
-    }, { immediate: true })
+    watch(
+      store,
+      newValue => {
+        value2 = newValue.userinfo.name
+      },
+      { immediate: true },
+    )
     expect(val).toEqual('tom')
-    store.userinfo.name = "jon"
+    store.userinfo.name = 'jon'
     expect(val).toEqual('jon')
     expect(value2).toEqual('jon')
   })
 
   it('watch cleanup', () => {
     const store = deepSignal({
-      count: 0
+      count: 0,
     })
     let cleanups = 0
-    const stop = watch(() => store.count, (_newValue, _oldValue, onCleanup) => {
-      onCleanup(() => {
-        cleanups++
-      })
-    }, { immediate: true })
+    const stop = watch(
+      () => store.count,
+      (_newValue, _oldValue, onCleanup) => {
+        onCleanup(() => {
+          cleanups++
+        })
+      },
+      { immediate: true },
+    )
 
     expect(cleanups).toEqual(0)
     store.count = 1
@@ -64,12 +80,16 @@ describe('watch', () => {
   it('watch multiple sources with getter functions', () => {
     const store = deepSignal({
       a: 1,
-      b: 2
+      b: 2,
     })
     let values: number[] = []
-    watch([() => store.a, store.$b!], (newValue) => {
-      values = newValue
-    }, { immediate: true })
+    watch(
+      [() => store.a, store.$b!],
+      newValue => {
+        values = newValue
+      },
+      { immediate: true },
+    )
 
     expect(values).toEqual([1, 2])
     store.a = 3
@@ -86,9 +106,13 @@ describe('watch', () => {
     })
     let values: unknown[] = []
 
-    watch([store, 1 as any], (newValue) => {
-      values = newValue
-    }, { immediate: true })
+    watch(
+      [store, 1 as any],
+      newValue => {
+        values = newValue
+      },
+      { immediate: true },
+    )
 
     expect(values[1]).toBeUndefined()
 
@@ -100,32 +124,40 @@ describe('watch', () => {
   it('watch once', () => {
     const store = deepSignal({
       userinfo: {
-        name: "tom"
-      }
+        name: 'tom',
+      },
     })
     let val!: string
-    watch(store, (newValue) => {
-      val = newValue.userinfo.name
-    }, {
-      immediate: true,
-      deep: true,
-      once: true
-    })
+    watch(
+      store,
+      newValue => {
+        val = newValue.userinfo.name
+      },
+      {
+        immediate: true,
+        deep: true,
+        once: true,
+      },
+    )
 
-    expect(val).toEqual("tom")
-    store.userinfo.name = "jon"
-    expect(val).not.toEqual("jon")
-    expect(val).toEqual("tom")
+    expect(val).toEqual('tom')
+    store.userinfo.name = 'jon'
+    expect(val).not.toEqual('jon')
+    expect(val).toEqual('tom')
   })
 
   it('watch handle pause and resume', () => {
     const store = deepSignal({
-      count: 0
+      count: 0,
     })
     let val = 0
-    const handle = watch(() => store.count, (newValue) => {
-      val = newValue
-    }, { immediate: true })
+    const handle = watch(
+      () => store.count,
+      newValue => {
+        val = newValue
+      },
+      { immediate: true },
+    )
 
     expect(val).toEqual(0)
     handle.pause()
@@ -143,12 +175,16 @@ describe('watch', () => {
 
   it('watch flush post', async () => {
     const store = deepSignal({
-      count: 0
+      count: 0,
     })
     let val = 0
-    watch(() => store.count, (newValue) => {
-      val = newValue
-    }, { flush: 'post' })
+    watch(
+      () => store.count,
+      newValue => {
+        val = newValue
+      },
+      { flush: 'post' },
+    )
 
     store.count = 1
     expect(val).toEqual(0)
@@ -158,17 +194,21 @@ describe('watch', () => {
 
   it('watch scheduler', () => {
     const store = deepSignal({
-      count: 0
+      count: 0,
     })
     const jobs: (() => void)[] = []
     let val = 0
-    watch(() => store.count, (newValue) => {
-      val = newValue
-    }, {
-      scheduler(job) {
-        jobs.push(job)
-      }
-    })
+    watch(
+      () => store.count,
+      newValue => {
+        val = newValue
+      },
+      {
+        scheduler(job) {
+          jobs.push(job)
+        },
+      },
+    )
 
     store.count = 1
     expect(val).toEqual(0)
@@ -183,13 +223,17 @@ describe('watch', () => {
     })
     const firstRuns: boolean[] = []
 
-    watch(() => store.count, () => {}, {
-      immediate: true,
-      scheduler(job, isFirstRun) {
-        firstRuns.push(isFirstRun)
-        job()
+    watch(
+      () => store.count,
+      () => {},
+      {
+        immediate: true,
+        scheduler(job, isFirstRun) {
+          firstRuns.push(isFirstRun)
+          job()
+        },
       },
-    })
+    )
 
     store.count = 1
 
@@ -202,12 +246,20 @@ describe('watch', () => {
     let signalValue = 0
     let computedValue = 0
 
-    watch(count, (newValue) => {
-      signalValue = newValue
-    }, { immediate: true })
-    watch(double, (newValue) => {
-      computedValue = newValue
-    }, { immediate: true })
+    watch(
+      count,
+      newValue => {
+        signalValue = newValue
+      },
+      { immediate: true },
+    )
+    watch(
+      double,
+      newValue => {
+        computedValue = newValue
+      },
+      { immediate: true },
+    )
 
     expect(signalValue).toEqual(1)
     expect(computedValue).toEqual(2)
@@ -225,9 +277,12 @@ describe('watch', () => {
     })
     let runs = 0
 
-    watch(() => store.count, () => {
-      runs++
-    })
+    watch(
+      () => store.count,
+      () => {
+        runs++
+      },
+    )
 
     store.other = 1
     expect(runs).toEqual(0)
@@ -242,12 +297,15 @@ describe('watch', () => {
     })
     let runs = 0
 
-    watch(() => {
-      store.count
-      return 'same'
-    }, () => {
-      runs++
-    })
+    watch(
+      () => {
+        store.count
+        return 'same'
+      },
+      () => {
+        runs++
+      },
+    )
 
     store.count = 1
 
@@ -261,13 +319,17 @@ describe('watch', () => {
     const jobs: (() => void)[] = []
     let value = 0
 
-    watch(() => store.count, (newValue) => {
-      value = newValue
-    }, {
-      scheduler(job) {
-        jobs.push(job)
+    watch(
+      () => store.count,
+      newValue => {
+        value = newValue
       },
-    })
+      {
+        scheduler(job) {
+          jobs.push(job)
+        },
+      },
+    )
 
     store.count = 1
     store.count = 2
@@ -282,9 +344,12 @@ describe('watch', () => {
       count: 0,
     })
     let runs = 0
-    const handle = watch(() => store.count, () => {
-      runs++
-    })
+    const handle = watch(
+      () => store.count,
+      () => {
+        runs++
+      },
+    )
 
     handle.pause()
     handle.pause()
@@ -304,9 +369,12 @@ describe('watch', () => {
       count: 0,
     })
     let runs = 0
-    const handle = watch(() => store.count, () => {
-      runs++
-    })
+    const handle = watch(
+      () => store.count,
+      () => {
+        runs++
+      },
+    )
 
     handle.pause()
     handle.resume()
@@ -341,12 +409,16 @@ describe('watch', () => {
     })
     let runs = 0
 
-    watch(() => store.count, () => {
-      runs++
-    }, {
-      immediate: true,
-      once: true,
-    })
+    watch(
+      () => store.count,
+      () => {
+        runs++
+      },
+      {
+        immediate: true,
+        once: true,
+      },
+    )
 
     store.count = 1
 
@@ -360,14 +432,18 @@ describe('watch', () => {
     const jobs: (() => void)[] = []
     let runs = 0
 
-    watch(() => store.count, () => {
-      runs++
-    }, {
-      once: true,
-      scheduler(job) {
-        jobs.push(job)
+    watch(
+      () => store.count,
+      () => {
+        runs++
       },
-    })
+      {
+        once: true,
+        scheduler(job) {
+          jobs.push(job)
+        },
+      },
+    )
 
     store.count = 1
     jobs.shift()!()
@@ -382,13 +458,17 @@ describe('watch', () => {
     })
     const jobs: (() => void)[] = []
     let runs = 0
-    const stop = watch(() => store.count, () => {
-      runs++
-    }, {
-      scheduler(job) {
-        jobs.push(job)
+    const stop = watch(
+      () => store.count,
+      () => {
+        runs++
       },
-    })
+      {
+        scheduler(job) {
+          jobs.push(job)
+        },
+      },
+    )
 
     store.count = 1
     stop()
@@ -400,9 +480,13 @@ describe('watch', () => {
   it('watch should handle invalid sources as noop', () => {
     let runs = 0
 
-    watch(1 as any, () => {
-      runs++
-    }, { immediate: true })
+    watch(
+      1 as any,
+      () => {
+        runs++
+      },
+      { immediate: true },
+    )
 
     expect(runs).toEqual(1)
   })
@@ -416,12 +500,20 @@ describe('watch', () => {
     let falseDeepRuns = 0
     let numericDeepRuns = 0
 
-    watch(store, () => {
-      falseDeepRuns++
-    }, { deep: false })
-    watch(() => store.nested, () => {
-      numericDeepRuns++
-    }, { deep: 1 })
+    watch(
+      store,
+      () => {
+        falseDeepRuns++
+      },
+      { deep: false },
+    )
+    watch(
+      () => store.nested,
+      () => {
+        numericDeepRuns++
+      },
+      { deep: 1 },
+    )
 
     store.nested.count = 1
 
@@ -461,9 +553,13 @@ describe('watch', () => {
     watch(store.root, () => {
       shallowRuns++
     })
-    watch(store, () => {
-      depthRuns++
-    }, { deep: 0 })
+    watch(
+      store,
+      () => {
+        depthRuns++
+      },
+      { deep: 0 },
+    )
 
     store.root.count = 1
     store.nested.count = 1
@@ -513,25 +609,25 @@ describe('watch', () => {
   it('watch effect', () => {
     const store = deepSignal({
       userinfo: {
-        name: "tom"
-      }
+        name: 'tom',
+      },
     })
     let x = undefined
     watchEffect(() => {
       x = store.userinfo.name
     })
 
-    expect(x).toEqual("tom")
-    store.userinfo.name = "jon"
-    expect(x).toEqual("jon")
+    expect(x).toEqual('tom')
+    store.userinfo.name = 'jon'
+    expect(x).toEqual('jon')
   })
 
   it('watch effect cleanup', () => {
     const store = deepSignal({
-      count: 0
+      count: 0,
     })
     let cleanups = 0
-    const stop = watchEffect((onCleanup) => {
+    const stop = watchEffect(onCleanup => {
       store.count
       onCleanup(() => {
         cleanups++
@@ -547,7 +643,7 @@ describe('watch', () => {
 
   it('watch effect handle pause and resume', () => {
     const store = deepSignal({
-      count: 0
+      count: 0,
     })
     let val = 0
     const handle = watchEffect(() => {

@@ -30,11 +30,11 @@ export const deepSignal = <T extends object>(obj: T): DeepSignal<T> => {
 
 export const peek = <T extends DeepSignalObject<object>, K extends keyof RevertDeepSignalObject<T>>(obj: T, key: K): RevertDeepSignal<RevertDeepSignalObject<T>[K]> => {
   peeking = true
-  const value = obj[key]
   try {
+    return obj[key] as RevertDeepSignal<RevertDeepSignalObject<T>[K]>
+  } finally {
     peeking = false
-  } catch (e) {}
-  return value as RevertDeepSignal<RevertDeepSignalObject<T>[K]>
+  }
 }
 
 const shallowFlag = Symbol(SignalFlags.IS_SHALLOW)
@@ -178,7 +178,17 @@ const shouldProxy = (val: any): boolean => {
 
 /** TYPES **/
 
-export type DeepSignal<T> = T extends Function ? T : T extends { [shallowFlag]: true } ? T : T extends { [rawFlag]: true } ? T : T extends Array<unknown> ? DeepSignalArray<T> : T extends object ? DeepSignalObject<T> : T
+export type DeepSignal<T> = T extends Function
+  ? T
+  : T extends { [shallowFlag]: true }
+    ? T
+    : T extends { [rawFlag]: true }
+      ? T
+      : T extends Array<unknown>
+        ? DeepSignalArray<T>
+        : T extends object
+          ? DeepSignalObject<T>
+          : T
 
 type DeepSignalObject<T extends object> = {
   [P in keyof T & string as `$${P}`]?: T[P] extends Function ? never : Signal<T[P]>
